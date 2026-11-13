@@ -42,7 +42,7 @@ graph TD
 | Компонент | Ответственность | Стек |
 |-----------|----------------|------|
 | `api-gateway` | Маршрутизация запросов на `order-service` и `inventory-service`. Никакой бизнес-логики. | Spring Cloud Gateway |
-| `order-service` | Приём заказов, валидация, хранение в PostgreSQL, публикация событий в Kafka через Transactional Outbox, consumo подтверждений/отказов. | Spring Boot 3.x, Spring Data JPA, Flyway, spring-kafka |
+| `order-service` | Приём заказов, валидация, хранение в PostgreSQL, публикация событий в Kafka через Transactional Outbox, чтение подтверждений/отказов. | Spring Boot 3.x, Spring Data JPA, Flyway, spring-kafka |
 | `inventory-service` | Резервирование товара в своей базе, публикация `OrderConfirmed` / `OrderRejected`. | Spring Boot 3.x, Spring Data JPA, Flyway, spring-kafka |
 | `notification-service` | Запись уведомлений о событиях в лог и таблицу PostgreSQL. | Spring Boot 3.x, Spring Data JPA, Flyway, spring-kafka |
 
@@ -50,7 +50,7 @@ graph TD
 
 1. Клиент отправляет `POST /orders` через Gateway.
 2. `order-service` сохраняет заказ со статусом `NEW` и пишет событие `OrderCreated` в таблицу `outbox` в **той же транзакции**.
-3. Outbox poller (`@Scheduled`) читает неопublikованные события и шлёт в топик Kafka `order.created`.
+3. Outbox poller (`@Scheduled`) читает неопубликованные события и шлёт в топик Kafka `order.created`.
 4. `inventory-service` читает `order.created`, проверяет идемпотентность (таблица `processed_events`), резервирует товар и шлёт `order.confirmed` или `order.rejected` в Kafka.
 5. `order-service` читает подтверждение/отказ и переводит заказ в `CONFIRMED` / `REJECTED`.
 6. `notification-service` читает все события и записывает уведомление в лог + БД.
@@ -86,7 +86,7 @@ graph TD
 ### 1. Клонировать репозиторий
 
 ```bash
-git clone <ваш-репозиторий>
+git clone https://github.com/Dm-prog/order_hub.git
 cd order_hub
 ```
 
@@ -169,7 +169,7 @@ docker-compose.yml
 3. Запустить сервисы в любом порядке (они подключаются к Kafka и БД при старте)
 4. Проверить health: `curl http://localhost:8081/actuator/health`
 
-**Переменные окружения** передаются через `application.yml` с valeurs по умолчанию для локальной разработки. На продакшене их можно переопределить через `.env` или переменные окружения Docker.
+**Переменные окружения** передаются через `application.yml` со значениями по умолчанию для локальной разработки. На продакшене их можно переопределить через `.env` или переменные окружения Docker.
 
 ## 🛡 Обработка ошибок
 
@@ -379,7 +379,7 @@ curl http://localhost:8081/actuator/health
 | Тип теста | Инструмент | Что покрыто | Статус |
 |-----------|------------|-------------|--------|
 | Юнит-тесты | JUnit 5 + Mockito | Бизнес-логика `order-service` (8 тестов), `inventory-service` (3 теста) | ✅ Зеленые |
-| Интеграционные | Testcontainers | Scвозной сценарий с реальной PostgreSQL и Kafka | ⚠️ Требует Docker (`@Disabled`) |
+| Интеграционные | Testcontainers | Сквозной сценарий с реальной PostgreSQL и Kafka | ⚠️ Требует Docker (`@Disabled`) |
 
 **Что покрыто тестами:**
 - Создание заказа с валидацией
@@ -512,4 +512,4 @@ mvn test
 
 ## 👤 Автор
 
-Дмитрий Котов — Java разработчик. Проект создан как Demonstrational артефакт для собеседований middle+.
+Дмитрий Котов — Java разработчик. Проект создан как Демонстрационный артефакт для собеседований middle+.
